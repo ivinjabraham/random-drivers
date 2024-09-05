@@ -17,6 +17,10 @@
 
 #define BUFFER_SIZE 1000
 
+#define SCULL_IOC_MAGIC 'k'
+#define SCULL_IOC_RESET _IO(SCULL_IOC_MAGIC, 1)
+#define SCULL_IOC_MAXNR 1
+
 MODULE_LICENSE("GPL");
 
 static dev_t device_num;
@@ -90,12 +94,31 @@ static ssize_t my_write(struct file* filp, const char* __user buf, size_t len, l
     return bytes_written;
 }
 
+static long ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    char *buffer;
+    size_t len;
+
+    switch(cmd) {
+        case SCULL_IOC_RESET:
+            memset(device_buffer, 0, BUFFER_SIZE);
+            printk(KERN_DEBUG "Device buffer reset");
+            break;
+
+        default:
+            return -ENOTTY;
+    }
+
+    return 0;
+}
+
 static const struct file_operations fops = {
     .owner = THIS_MODULE,
     .open = open,
     .read = read,
     .release = release,
     .write = my_write, 
+    .unlocked_ioctl = ioctl,
 };
 
 
