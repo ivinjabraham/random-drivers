@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Default major and minor numbers
+DEFAULT_MAJOR=235
+DEFAULT_MINOR=0
+
+# Use command-line arguments if provided
+MAJOR=${1:-$DEFAULT_MAJOR}
+MINOR=${2:-$DEFAULT_MINOR}
+
+# Device file path
+DEVICE_FILE="/dev/scull"
+
+# Remove the existing device file if it exists
+if [ -e "$DEVICE_FILE" ]; then
+    echo "Removing existing device file: $DEVICE_FILE"
+    sudo rm "$DEVICE_FILE"
+fi
+
+# Create the device file with the specified major and minor numbers
+echo "Creating device file $DEVICE_FILE with major=$MAJOR and minor=$MINOR"
+sudo mknod "$DEVICE_FILE" c "$MAJOR" "$MINOR"
+
+# Set appropriate permissions
+sudo chmod 666 "$DEVICE_FILE"
+
+# Display the device file details
+ls -l "$DEVICE_FILE"
