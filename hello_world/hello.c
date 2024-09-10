@@ -2,9 +2,6 @@
 #include <linux/module.h>
 MODULE_LICENSE("GPL");
 
-static char* whom = "world";
-module_param(whom, charp, S_IRUGO);
-
 static int __init hello_init(void) 
 {
     printk(KERN_ALERT "hello, world");
