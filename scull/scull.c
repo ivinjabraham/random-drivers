@@ -44,7 +44,6 @@ module_param(minor_num, int, S_IRUGO);
 static int scull_open(struct inode *inode, struct file *flip)
 {
 	// TODO: Crash when calling current?
-	printk(KERN_DEBUG "Opening scull.");
 	scull_dev *dev = container_of(inode->i_cdev, scull_dev, cdev);
 	flip->private_data = dev;
 
@@ -54,7 +53,6 @@ static int scull_open(struct inode *inode, struct file *flip)
 static ssize_t scull_read(struct file *filp, char *__user buf, size_t len,
 			  loff_t *f_pos)
 {
-	printk(KERN_DEBUG "Reading from device.\n");
 	ssize_t bytes_read;
 
 	// EOF
@@ -74,21 +72,17 @@ static ssize_t scull_read(struct file *filp, char *__user buf, size_t len,
 	*f_pos += len;
 
 	bytes_read = len;
-	printk(KERN_DEBUG "Successfully read %zu bytes from device",
-	       bytes_read);
 	return bytes_read;
 }
 
 static int scull_release(struct inode *inode, struct file *filp)
 {
-	printk(KERN_DEBUG "Scull released.");
 	return 0;
 }
 
 static ssize_t scull_write(struct file *filp, const char *__user buf,
 			   size_t len, loff_t *f_pos)
 {
-	printk(KERN_DEBUG "Writing to device.");
 	ssize_t bytes_written;
 
 	// EOF
@@ -109,8 +103,6 @@ static ssize_t scull_write(struct file *filp, const char *__user buf,
 	*f_pos += len;
 
 	bytes_written = len;
-	printk(KERN_DEBUG "Successfully wrote %zu bytes to device.",
-	       bytes_written);
 	return bytes_written;
 }
 
@@ -148,12 +140,10 @@ static int reg_scull(void)
 	int result;
 
 	if (major_num) {
-		printk(KERN_DEBUG "Registering chrdev region statically.\n");
 		device_num = MKDEV(major_num, minor_num);
 		result = register_chrdev_region(device_num, num_devices,
 						"scull");
 	} else {
-		printk(KERN_DEBUG "Registering chrdev region dynamically.\n");
 		result = alloc_chrdev_region(&device_num, 0, num_devices,
 					     "scull");
 	}
@@ -163,10 +153,6 @@ static int reg_scull(void)
 
 static int cdev_setup(scull_dev *devp, int index)
 {
-	printk(KERN_DEBUG
-	       "Creating CDEV for device %i with major number %u and minor number %u",
-	       index, MAJOR(device_num), MINOR(device_num) + index);
-
 	int result;
 	dev_t dev_no = MKDEV(MAJOR(device_num), MINOR(device_num) + index);
 
@@ -182,14 +168,11 @@ static int cdev_setup(scull_dev *devp, int index)
 
 static int __init scull_init(void)
 {
-	printk(KERN_DEBUG "Loading SCULL.\n");
 	int result;
-
-	printk(KERN_DEBUG "Registering device number.\n");
 
 	result = reg_scull();
 	if (result < 0) {
-		printk(KERN_ERR "Failed to register device number.\n");
+		printk(KERN_ERR "SCULL: Failed to register device number.\n");
 		return result;
 	}
 
@@ -198,8 +181,6 @@ static int __init scull_init(void)
             for %u number of devices.\n",
 	       MAJOR(device_num), MINOR(device_num), num_devices);
 
-	printk(KERN_DEBUG "Allocating devices.\n");
-
 	scull_devices = kzalloc(num_devices * sizeof(scull_dev), GFP_KERNEL);
 	if (!scull_devices) {
 		printk(KERN_ERR "Could not allocate memory for devices.\n");
@@ -207,9 +188,6 @@ static int __init scull_init(void)
 		goto err_chrdev;
 	}
 
-	printk(KERN_DEBUG "Successfully allocated memory for devices.\n");
-
-	printk(KERN_DEBUG "Allocating buffers for devices.\n");
 	for (int i = 0; i < num_devices; i++) {
 		scull_devices[i].device_buffer =
 			kzalloc(BUFFER_SIZE, GFP_KERNEL);
@@ -219,39 +197,28 @@ static int __init scull_init(void)
 			       i);
 			result = -ENOMEM;
 
-			printk(KERN_DEBUG
-			       "Freeing memory for the %d previously allocated buffer(s).\n",
-			       i);
 			int j;
 			for (j = 0; j < i; j++) {
 				kfree(scull_devices[j].device_buffer);
 			}
-			printk(KERN_DEBUG "%d buffers freed.\n", j);
-
 			goto err_cdev_setup;
 		}
 	}
-	printk(KERN_DEBUG "Successfully allocated buffers for devices.\n");
 
 	for (int i = 0; i < num_devices; i++) {
 		result = cdev_setup(&scull_devices[i], i);
 		if (result) {
 			printk(KERN_ERR "Failed to setup cdev.");
 			// TODO: Repeated twice, might be useful to abstract into fn.
-			printk(KERN_DEBUG
-			       "Deleting previously added %d CDEV(s).\n",
-			       i);
 			int j;
 			for (j = 0; j < i; j++) {
 				cdev_del(&scull_devices[j].cdev);
 			}
-			printk(KERN_DEBUG "Deleted %d CDEV(s).\n", j);
 			goto err_cdev_setup;
 		}
 	}
 
-	printk(KERN_DEBUG "Ready for use");
-	printk(KERN_INFO "Ready.");
+	printk(KERN_NOTICE "SCULL: Ready for use.\n");
 
 	return 0; // TODO: two returns?
 
@@ -260,7 +227,8 @@ err_cdev_setup:
 err_chrdev:
 	unregister_chrdev_region(device_num, num_devices);
 
-	return 0; // TODO: return last err or success on exit?
+	printk(KERN_ERR "SCULL: Failed to initialize.\n");
+	return result;
 }
 
 static void __exit scull_exit(void)
@@ -268,18 +236,15 @@ static void __exit scull_exit(void)
 	for (int i = 0; i < num_devices; i++) {
 		cdev_del(&scull_devices[i].cdev);
 	}
-	printk(KERN_DEBUG "Deleted cdev(s).\n");
 
 	for (int i = 0; i < num_devices; i++) {
 		kfree(scull_devices[i].device_buffer);
 	}
 	kfree(scull_devices);
-	printk(KERN_DEBUG "Deleted buffers.\n");
 
 	unregister_chrdev_region(device_num, num_devices);
 
-	printk(KERN_DEBUG "Unregistered device numbers.\n");
-	printk(KERN_DEBUG "Unloading SCULL. Goodbye.\n");
+	printk(KERN_NOTICE "SCULL: Unloading SCULL. Goodbye.\n");
 }
 
 module_init(scull_init);
