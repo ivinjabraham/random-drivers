@@ -1,0 +1,107 @@
+#!/bin/bash
+#  Script that automates building, loading and creating device files for drivers.
+#  Copyright (C) 2024 Ivin Joel Abraham
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <module_name> [num_devices=<number>] [other module_args]"
+    exit 1
+fi
+
+MODULE_NAME=$1
+MODULE_ARGS="${@:2}"
+NUM_DEVICES=1
+
+# Parse arguments
+for arg in "$@"; do
+    case $arg in
+        num_devices=*)
+            NUM_DEVICES="${arg#*=}"
+            ;;
+        *)
+            MODULE_ARGS="$arg"
+            ;;
+    esac
+done
+
+# ---
+# Build
+# ---
+if [ ! -f "${MODULE_NAME}/${MODULE_NAME}.c" ]; then
+    echo "Error: Source file '${MODULE_NAME}/${MODULE_NAME}.c' not found."
+    exit 1
+fi
+
+echo "Running make clean and default for module: $MODULE_NAME"
+make MODULE_NAME=${MODULE_NAME} clean
+if [ $? -ne 0 ]; then
+    echo "Error: make clean failed for module: $MODULE_NAME"
+    exit 1
+fi
+
+make MODULE_NAME=${MODULE_NAME}
+if [ $? -ne 0]; then
+    echo "Error: make failed for module: $MODULE_NAME"
+    exit 1
+fi
+
+if [ ! -f "${MODULE_NAME}/{MODULE_NAME}.ko"]; then
+    echo "Error: ${MODULE_NAME}.ko not found. Ensure build was successful."
+    exit 1
+fi
+
+# ---
+# Post Build
+# ---
+echo "Inserting module: $MODULE_NAME"
+if [ "$NUM_DEVICES" -gt 1 ]; then
+    sudo insmod ./${MODULE_NAME}/${MODULE_NAME}.ko num_devices=$NUM_DEVICES $MODULE_ARGS
+else
+    sudo insmod ./${MODULE_NAME}/${MODULE_NAME}.ko $MODULE_ARGS
+fi
+
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to insert module ${MODULE_NAME}."
+    exit 1
+fi
+
+if ! lsmod | grep -q "^${MODULE_NAME}"; then
+    echo "Error: Module ${MODULE_NAME} is not loaded."
+    exit 1
+fi
+
+echo "${MODULE_NAME} is inserted successfully."
+
+MAJOR=$(grep "$MODULE_NAME" /proc/devices | awk '{print $1}')
+if [ -z "$MAJOR" ]; then
+    echo "Error: could not find major number for module ${MODULE_NAME} in /proc/devices."
+    exit 1
+fi
+
+if [ -e "$DEVICE_NAME" ]; then
+    echo "Device file already exists."
+else
+    for (( i=0; i<$NUM_DEVICES; i++ )); do
+        DEVICE_NAME="/dev/${MODULE_NAME}_$i" 
+        sudo mknod "$DEVICE_NAME" c $MAJOR $i
+        sudo chmod 666 "$DEVICE_NAME"
+        if [ $? -eq 0 ]; then
+            echo "Device file created."
+        else
+            echo "Error: could not create device file."
+            exit 1
+        fi
+    done
+fi
