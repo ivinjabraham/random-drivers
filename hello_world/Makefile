@@ -1,3 +1,6 @@
+# Slightly modified version of the makefile present in LDD3.
+# “Linux Device Drivers, Third Edition, by Jonathan Corbet, Alessandro Rubini, and Greg Kroah-Hartman. Copyright
+# 2005 O’Reilly Media, Inc., 0-596-00590-3."
 ifneq ($(KERNELRELEASE),)
 	obj-m := hello.o
 

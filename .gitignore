@@ -1,3 +1,4 @@
 example-src/
 .cache/
 compile_commands.json
+test.c

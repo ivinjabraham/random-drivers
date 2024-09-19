@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Default major and minor numbers
 DEFAULT_MAJOR=235
 DEFAULT_MINOR=0

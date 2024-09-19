@@ -1,4 +1,19 @@
-// ?
+//  SCULL Driver: based off of Linux Device Drivers edtn. 3
+//  Copyright (C) 2024 Ivin Joel Abraham
+
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include <linux/stat.h>
 #include <linux/sysctl.h>
 #include <linux/uaccess.h>
@@ -43,7 +58,6 @@ module_param(minor_num, int, S_IRUGO);
 
 static int scull_open(struct inode *inode, struct file *flip)
 {
-	// TODO: Crash when calling current?
 	scull_dev *dev = container_of(inode->i_cdev, scull_dev, cdev);
 	flip->private_data = dev;
 
@@ -69,6 +83,7 @@ static ssize_t scull_read(struct file *filp, char *__user buf, size_t len,
 	if (copy_to_user(buf, dev->device_buffer + *f_pos, len)) {
 		return -EFAULT;
 	}
+
 	*f_pos += len;
 
 	bytes_read = len;
@@ -126,6 +141,7 @@ static long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	return 0;
 }
+
 static const struct file_operations fops = {
 	.owner = THIS_MODULE,
 	.open = scull_open,
@@ -177,13 +193,13 @@ static int __init scull_init(void)
 	}
 
 	printk(KERN_DEBUG
-	       "Registration succeeded major number %u and minor number starting from %u \
-            for %u number of devices.\n",
+	       "SCULL: Registration succeeded major number %u and minor number starting from %u for %u number of devices.\n",
 	       MAJOR(device_num), MINOR(device_num), num_devices);
 
 	scull_devices = kzalloc(num_devices * sizeof(scull_dev), GFP_KERNEL);
 	if (!scull_devices) {
-		printk(KERN_ERR "Could not allocate memory for devices.\n");
+		printk(KERN_ERR
+		       "SCULL: Could not allocate memory for devices.\n");
 		result = -ENOMEM;
 		goto err_chrdev;
 	}
@@ -193,7 +209,7 @@ static int __init scull_init(void)
 			kzalloc(BUFFER_SIZE, GFP_KERNEL);
 		if (!scull_devices[i].device_buffer) {
 			printk(KERN_ERR
-			       "Failed to allocate buffer for device %d",
+			       "SCULL: Failed to allocate buffer for device %d",
 			       i);
 			result = -ENOMEM;
 
@@ -208,7 +224,7 @@ static int __init scull_init(void)
 	for (int i = 0; i < num_devices; i++) {
 		result = cdev_setup(&scull_devices[i], i);
 		if (result) {
-			printk(KERN_ERR "Failed to setup cdev.");
+			printk(KERN_ERR "SCULL: Failed to setup cdev.");
 			// TODO: Repeated twice, might be useful to abstract into fn.
 			int j;
 			for (j = 0; j < i; j++) {
