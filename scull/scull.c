@@ -18,8 +18,8 @@
 #include <linux/sysctl.h>
 #include <linux/uaccess.h>
 #include <linux/device.h>
-#include <linux/fs.h>
 
+#include <linux/fs.h> // 'file' struct
 #include <linux/errno.h> // std. error definitions
 #include <asm/current.h> // For `current` struct
 #include <linux/slab.h> // malloc and related functions
@@ -33,7 +33,7 @@
 #include <linux/types.h>
 #include <linux/cdev.h>
 
-#define BUFFER_SIZE 1000 // TODO: Dynamic buffer
+#define BUFFER_SIZE 8000 // TODO: Dynamic buffer
 #define NUMBER_OF_DEVICE_NUMBERS_ASSOCIATED_WITH_DEVICE 1
 // IOCTL
 #define SCULL_IOC_MAGIC '1'
@@ -50,16 +50,12 @@ scull_dev *scull_devices;
 
 static dev_t device_num;
 static int num_devices = 1;
-static int major_num = 0;
-static int minor_num = 0;
 module_param(num_devices, int, S_IRUGO);
-module_param(major_num, int, S_IRUGO);
-module_param(minor_num, int, S_IRUGO);
 
-static int scull_open(struct inode *inode, struct file *flip)
+static int scull_open(struct inode *inode, struct file *filp)
 {
 	scull_dev *dev = container_of(inode->i_cdev, scull_dev, cdev);
-	flip->private_data = dev;
+	filp->private_data = dev;
 
 	return 0;
 }
@@ -155,14 +151,8 @@ static int reg_scull(void)
 {
 	int result;
 
-	if (major_num) {
-		device_num = MKDEV(major_num, minor_num);
-		result = register_chrdev_region(device_num, num_devices,
-						"scull");
-	} else {
-		result = alloc_chrdev_region(&device_num, 0, num_devices,
-					     "scull");
-	}
+        result = alloc_chrdev_region(&device_num, 0, num_devices,
+                "scull");
 
 	return result;
 }
