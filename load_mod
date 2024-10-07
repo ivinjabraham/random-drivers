@@ -52,12 +52,13 @@ if [ $? -ne 0 ]; then
 fi
 
 make MODULE_NAME=${MODULE_NAME}
-if [ $? -ne 0]; then
+if [ $? -ne 0 ]; then
     echo "Error: make failed for module: $MODULE_NAME"
     exit 1
 fi
 
-if [ ! -f "${MODULE_NAME}/{MODULE_NAME}.ko"]; then
+echo "Looking for ${MODULE_NAME}/${MODULE_NAME}.ko"
+if [ ! -f "${MODULE_NAME}/${MODULE_NAME}.ko" ]; then
     echo "Error: ${MODULE_NAME}.ko not found. Ensure build was successful."
     exit 1
 fi
