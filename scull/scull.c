@@ -33,24 +33,10 @@
 #include <linux/types.h>
 #include <linux/cdev.h>
 
-#define BUFFER_SIZE 8000 // TODO: Dynamic buffer
-#define NUMBER_OF_DEVICE_NUMBERS_ASSOCIATED_WITH_DEVICE 1
-// IOCTL
-#define SCULL_IOC_MAGIC '1'
-#define SCULL_IOC_RESET _IO(SCULL_IOC_MAGIC, 1)
-#define SCULL_IOC_MAXNR 1
-MODULE_LICENSE("Dual BSD/GPL");
+#include "scull.h"
 
-// TODO: Concurrency with binary sem?
-typedef struct scull_dev {
-	char *device_buffer; // "Device"
-	struct cdev cdev;
-} scull_dev;
-scull_dev *scull_devices;
+MODULE_LICENSE("GPL");
 
-static dev_t device_num;
-static int num_devices = 1;
-module_param(num_devices, int, S_IRUGO);
 
 static int scull_open(struct inode *inode, struct file *filp)
 {
@@ -183,7 +169,7 @@ static int __init scull_init(void)
 	}
 
 	printk(KERN_DEBUG
-	       "SCULL: Registration succeeded major number %u and minor number starting from %u for %u number of devices.\n",
+	       "SCULL: Registration succeeded for major number %u and minor number starting from %u for %u number of devices.\n",
 	       MAJOR(device_num), MINOR(device_num), num_devices);
 
 	scull_devices = kzalloc(num_devices * sizeof(scull_dev), GFP_KERNEL);
@@ -215,7 +201,6 @@ static int __init scull_init(void)
 		result = cdev_setup(&scull_devices[i], i);
 		if (result) {
 			printk(KERN_ERR "SCULL: Failed to setup cdev.");
-			// TODO: Repeated twice, might be useful to abstract into fn.
 			int j;
 			for (j = 0; j < i; j++) {
 				cdev_del(&scull_devices[j].cdev);
@@ -226,7 +211,7 @@ static int __init scull_init(void)
 
 	printk(KERN_NOTICE "SCULL: Ready for use.\n");
 
-	return 0; // TODO: two returns?
+	return 0;
 
 err_cdev_setup:
 	kfree(scull_devices);
