@@ -14,7 +14,6 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#define BUFFER_SIZE 8000 // TODO: Dynamic buffer
 #define NUMBER_OF_DEVICE_NUMBERS_ASSOCIATED_WITH_DEVICE 1
 // IOCTL
 #define SCULL_IOC_MAGIC '1'
@@ -33,8 +32,10 @@
 #  define PDEBUG(fmt, args...) /* not debugging: nothing */
 #endif
 
+static int buffer_size = 8000;
 static int num_devices = 1;
 module_param(num_devices, int, S_IRUGO);
+module_param(buffer_size, int, S_IRUGO);
 
 // TODO: Concurrency with binary sem?
 typedef struct scull_dev {
@@ -44,4 +45,3 @@ typedef struct scull_dev {
 
 scull_dev *scull_devices;
 static dev_t device_num;
-

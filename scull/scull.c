@@ -52,13 +52,13 @@ static ssize_t scull_read(struct file *filp, char *__user buf, size_t len,
 	ssize_t bytes_read;
 
 	// EOF
-	if (*f_pos >= BUFFER_SIZE) {
+	if (*f_pos >= buffer_size) {
 		return 0;
 	}
 
 	// Handle out of bounds read
-	if (len > BUFFER_SIZE - *f_pos) {
-		len = BUFFER_SIZE - *f_pos;
+	if (len > buffer_size - *f_pos) {
+		len = buffer_size - *f_pos;
 	}
 
 	scull_dev *dev = filp->private_data;
@@ -83,13 +83,13 @@ static ssize_t scull_write(struct file *filp, const char *__user buf,
 	ssize_t bytes_written;
 
 	// EOF
-	if (*f_pos >= BUFFER_SIZE) {
+	if (*f_pos >= buffer_size) {
 		return 0;
 	}
 
 	// Handle out of bounds write
-	if (len > BUFFER_SIZE - *f_pos) {
-		len = BUFFER_SIZE - *f_pos;
+	if (len > buffer_size - *f_pos) {
+		len = buffer_size - *f_pos;
 	}
 
 	scull_dev *dev = filp->private_data;
@@ -113,7 +113,7 @@ static long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case SCULL_IOC_RESET:
-		memset(dev->device_buffer, 0, BUFFER_SIZE);
+		memset(dev->device_buffer, 0, buffer_size);
 		printk(KERN_DEBUG "Device buffer reset.\n");
 		break;
 
@@ -164,29 +164,25 @@ static int __init scull_init(void)
 
 	result = reg_scull();
 	if (result < 0) {
-		printk(KERN_ERR "SCULL: Failed to register device number.\n");
+		PDEBUG("scull: Failed to register device number.\n");
 		return result;
 	}
 
-	printk(KERN_DEBUG
-	       "SCULL: Registration succeeded for major number %u and minor number starting from %u for %u number of devices.\n",
+	PDEBUG("scull: Registration succeeded for major number %u and minor number startings from %u for %u number of devices.\n",
 	       MAJOR(device_num), MINOR(device_num), num_devices);
 
 	scull_devices = kzalloc(num_devices * sizeof(scull_dev), GFP_KERNEL);
 	if (!scull_devices) {
-		printk(KERN_ERR
-		       "SCULL: Could not allocate memory for devices.\n");
+		PDBEUG("scull: Could not allocate memory for devices.\n");
 		result = -ENOMEM;
 		goto err_chrdev;
 	}
 
 	for (int i = 0; i < num_devices; i++) {
 		scull_devices[i].device_buffer =
-			kzalloc(BUFFER_SIZE, GFP_KERNEL);
+			kzalloc(buffer_size, GFP_KERNEL);
 		if (!scull_devices[i].device_buffer) {
-			printk(KERN_ERR
-			       "SCULL: Failed to allocate buffer for device %d",
-			       i);
+			PDBEUG("scull: Failed to allocate buffer for device %d", i);
 			result = -ENOMEM;
 
 			int j;
@@ -200,7 +196,7 @@ static int __init scull_init(void)
 	for (int i = 0; i < num_devices; i++) {
 		result = cdev_setup(&scull_devices[i], i);
 		if (result) {
-			printk(KERN_ERR "SCULL: Failed to setup cdev.");
+			PDEBUG("scull: Failed to setup cdev.");
 			int j;
 			for (j = 0; j < i; j++) {
 				cdev_del(&scull_devices[j].cdev);
@@ -209,7 +205,7 @@ static int __init scull_init(void)
 		}
 	}
 
-	printk(KERN_NOTICE "SCULL: Ready for use.\n");
+	printk(KERN_INFO "SCULL: Ready for use.\n");
 
 	return 0;
 
@@ -235,7 +231,7 @@ static void __exit scull_exit(void)
 
 	unregister_chrdev_region(device_num, num_devices);
 
-	printk(KERN_NOTICE "SCULL: Unloading SCULL. Goodbye.\n");
+	printk(KERN_INFO "SCULL: Unloading SCULL. Goodbye.\n");
 }
 
 module_init(scull_init);
